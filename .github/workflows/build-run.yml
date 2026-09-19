@@ -5,50 +5,68 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: zxdesk-main
   cancel-in-progress: false
 
 jobs:
   build-run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Record runner
+        run: |
+          mkdir -p build shots
+          printf '%s\n' "$RUNNER_NAME" > build/runner-name.txt
+          printf '%s\n' "$RUNNER_OS" > build/runner-os.txt
+          printf '%s\n' "$RUNNER_ARCH" > build/runner-arch.txt
 
       - name: Install tools
         run: |
+          set -eu
           sudo apt-get update
-          sudo apt-get install -y build-essential libboost-all-dev libspectrum-dev libaudiofile-dev libgtk-3-dev libxml2-dev libbz2-dev libgcrypt20-dev libpng-dev libsamplerate0-dev libzstd-dev libcurl4-openssl-dev libgl-dev libglew-dev xvfb scrot wget
+          sudo apt-get install -y --no-install-recommends build-essential ca-certificates wget fuse-emulator-gtk xvfb scrot
           wget -q https://pasmo.speccy.org/bin/pasmo-0.5.5.tar.gz
           tar xzf pasmo-0.5.5.tar.gz
           cd pasmo-0.5.5
           ./configure
-          make -j2
+          make -j1
           sudo make install
-          cd ..
-          sudo apt-get install -y fuse-emulator-gtk
+          pasmo --version
+          fuse --version
 
       - name: Build
-        shell: zsh {0}
         run: |
           set -eu
-          mkdir -p build shots
-          ./build.sh
+          pasmo -I src --name zxdesk.tap --tapbas src/zxdesk.asm build/zxdesk.tap build/zxdesk.sym
+          pasmo -I src --bin src/zxdesk.asm build/zxdesk.bin
           test -s build/zxdesk.tap
+          test -s build/zxdesk.bin
+          bytes=$(stat -c%s build/zxdesk.bin)
+          end=$((0x6000 + bytes))
+          slowend=$(awk '$1=="SlowEnd"{v=$3; sub(/[Hh]$/,"",v); print v; exit}' build/zxdesk.sym)
+          slowend=$((16#${slowend:-6000}))
+          test "$end" -le $((0xBD00))
+          test "$slowend" -le $((0x8000))
 
       - name: Run and capture
         run: |
           set -eu
-          Xvfb :99 -screen 0 1024x768x24 >build/xvfb.log 2>&1 &
+          Xvfb :99 -screen 0 1024x768x24 -ac >build/xvfb.log 2>&1 &
+          XVFB_PID=$!
           export DISPLAY=:99
           sleep 2
-          fuse --machine 48 --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
+          fuse --machine 48 --auto-load --accelerate-loader --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
           FUSE_PID=$!
+          trap 'kill "$FUSE_PID" "$XVFB_PID" 2>/dev/null || true' EXIT
           sleep 12
           scrot shots/zxdesk.png
           test -s shots/zxdesk.png
-          kill "$FUSE_PID" 2>/dev/null || true
 
       - name: Save outputs
         if: always()
@@ -61,5 +79,8 @@ jobs:
             build/zxdesk.sym
             build/fuse.log
             build/xvfb.log
+            build/runner-name.txt
+            build/runner-os.txt
+            build/runner-arch.txt
             shots/zxdesk.png
           if-no-files-found: warn
