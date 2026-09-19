@@ -35,6 +35,10 @@ PYTHONPATH="$ROOT/build/tools/python" python3 zxtest.py | tee build/zxtest.log
 PYTHONPATH="$ROOT/build/tools/python" python3 zxtest.py --shot | tee build/zxshot.log
 test -s shots/headless-notepad.png
 
+install -d /usr/local/share/spectrum-roms
+install -m 0644 assets/48.rom /usr/local/share/spectrum-roms/48.rom
+printf '%s  %s\n' d55daa439b673b0e3f5897f99ac37ecb45f974d1862b4dadb85dec34af99cb42 /usr/local/share/spectrum-roms/48.rom | sha256sum -c -
+
 Xvfb :99 -screen 0 1024x768x24 -ac >build/xvfb.log 2>&1 &
 XVFB_PID=$!
 export DISPLAY=:99
@@ -59,8 +63,8 @@ cleanup() {
 trap cleanup EXIT
 sleep 2
 
-fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
-  build/zxdesk.tap >build/fuse-visual.log 2>&1 &
+fuse --machine 48 --auto-load --phantom-typist-mode Keyword --accelerate-loader --no-sound \
+  --tape build/zxdesk.tap >build/fuse-visual.log 2>&1 &
 FUSE_PID=$!
 sleep 12
 kill -0 "$FUSE_PID"
@@ -72,8 +76,8 @@ build_one bench3 --equ BENCH=1 --equ HARNESS=1
 cp build/bench3.tap build/bench3-tape.tap
 python3 taplant.py build/bench3-tape.tap TAPETEST DE,AD,BE,EF,01,02,03,04
 
-fuse --full-screen --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
-  build/bench3-tape.tap >build/fuse-bench.log 2>&1 &
+fuse --full-screen --machine 48 --auto-load --phantom-typist-mode Keyword --accelerate-loader --no-sound \
+  --tape build/bench3-tape.tap >build/fuse-bench.log 2>&1 &
 FUSE_PID=$!
 sleep 18
 kill -0 "$FUSE_PID"
