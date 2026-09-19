@@ -1,0 +1,76 @@
+name: GUI acceptance capture
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zxdesk-gui-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    if: github.event.issue.title == 'GUI acceptance capture request 2026-09-19'
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu@sha256:2e863c44b718727c860746568e1d54afd13b2fa71b160f5cd9058fc436217b30
+    timeout-minutes: 20
+    steps:
+      - name: Bootstrap checkout
+        run: |
+          set -eu
+          printf 'APT::Snapshot "%s";\n' 20260630T120000Z > /etc/apt/apt.conf.d/50zxdesk-snapshot
+          apt-get -o Acquire::https::Verify-Peer=false update
+          apt-get -o Acquire::https::Verify-Peer=false install -y --no-install-recommends ca-certificates
+          apt-get update
+          apt-get install -y --no-install-recommends git git-lfs
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: main
+
+      - name: Verify ROM
+        run: |
+          set -eu
+          test -s assets/48.rom
+          printf '%s  %s\n' d55daa439b673b0e3f5897f99ac37ecb45f974d1862b4dadb85dec34af99cb42 assets/48.rom | sha256sum -c -
+
+      - name: Install pinned tools
+        run: bash build/tools/install-pinned.sh
+
+      - name: Run acceptance
+        run: |
+          set -eu
+          ROOT="$PWD"
+          mkdir -p build shots
+          pasmo -I src --equ TEST=1 --equ HARNESS=1 --name zxtest.tap --tapbas src/zxdesk.asm build/zxtest.tap build/zxtest.sym
+          pasmo -I src --equ TEST=1 --equ HARNESS=1 --bin src/zxdesk.asm build/zxtest.bin
+          PYTHONPATH="$ROOT/build/tools/python" python3 gui_acceptance_test.py | tee build/gui-acceptance.log
+
+      - name: Commit captures
+        run: |
+          set -eu
+          mkdir -p images/gui_acceptance_test
+          rm -f images/gui_acceptance_test/*.png
+          cp shots/gui-*.png images/gui_acceptance_test/
+          test "$(find images/gui_acceptance_test -maxdepth 1 -name 'gui-*.png' -type f | wc -l)" -eq 11
+          git lfs install --local
+          git add .gitattributes images/gui_acceptance_test
+          git rm .github/workflows/gui-capture.yml
+          names="$(git diff --cached --name-only)"
+          printf '%s\n' "$names" | grep -qx '.gitattributes'
+          printf '%s\n' "$names" | grep -qx '.github/workflows/gui-capture.yml'
+          test "$(printf '%s\n' "$names" | grep -c '^images/gui_acceptance_test/gui-.*\.png$')" -eq 11
+          test "$(printf '%s\n' "$names" | wc -l)" -eq 13
+          for f in images/gui_acceptance_test/*.png; do
+            git show ":$f" | grep -qx 'version https://git-lfs.github.com/spec/v1'
+            git show ":$f" | grep -Eq '^oid sha256:[0-9a-f]{64}$'
+            git show ":$f" | grep -Eq '^size [0-9]+$'
+          done
+          git config user.name tuklusan
+          git config user.email tuklusan@users.noreply.github.com
+          git commit -m 'Store GUI acceptance captures'
+          git push origin HEAD:main
