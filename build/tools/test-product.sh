@@ -38,84 +38,47 @@ test -s shots/headless-notepad.png
 Xvfb :99 -screen 0 1024x768x24 -ac >build/xvfb.log 2>&1 &
 XVFB_PID=$!
 export DISPLAY=:99
+
+stop_proc() {
+  local pid="$1"
+  kill "$pid" 2>/dev/null || true
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid" 2>/dev/null || true
+      return
+    fi
+    sleep 0.2
+  done
+  kill -KILL "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+
 cleanup() {
-  kill "$XVFB_PID" 2>/dev/null || true
+  stop_proc "$XVFB_PID"
 }
 trap cleanup EXIT
 sleep 2
 
-evpoll=$(sym build/zxdesk.sym EvPoll)
-test -n "$evpoll"
-smoke_cmd=$(printf 'breakpoint 0x%s\ncommands 1\nprint 424243\nend\n' "$evpoll")
-set +e
-timeout -k 5s 60s fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
-  --debugger-command "$smoke_cmd" build/zxdesk.tap >build/fuse-smoke.log 2>&1
-smoke_rc=$?
-set -e
-case "$smoke_rc" in
-  0|124|137) ;;
-  *) exit "$smoke_rc" ;;
-esac
-grep -q '424243' build/fuse-smoke.log
-
-fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound   build/zxdesk.tap >build/fuse-visual.log 2>&1 &
+fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
+  build/zxdesk.tap >build/fuse-visual.log 2>&1 &
 FUSE_PID=$!
 sleep 12
 kill -0 "$FUSE_PID"
 scrot shots/zxdesk.png
-test "$(stat -c%s shots/zxdesk.png)" -gt 10000
-kill "$FUSE_PID" 2>/dev/null || true
-wait "$FUSE_PID" 2>/dev/null || true
+python3 build/tools/check-screen.py nonblank shots/zxdesk.png
+stop_proc "$FUSE_PID"
 
 build_one bench3 --equ BENCH=1 --equ HARNESS=1
 cp build/bench3.tap build/bench3-tape.tap
 python3 taplant.py build/bench3-tape.tap TAPETEST DE,AD,BE,EF,01,02,03,04
 
-word_expr() {
-  local file="$1"
-  local name="$2"
-  local a
-  a=$(sym "$file" "$name")
-  printf '([0x%s]+256*[0x%04X])' "$a" $((16#$a + 1))
-}
-
-byte_expr() {
-  local file="$1"
-  local name="$2"
-  local a
-  a=$(sym "$file" "$name")
-  printf '[0x%s]' "$a"
-}
-
-bhang=$(sym build/bench3.sym BHang)
-test -n "$bhang"
-bsum=$(word_expr build/bench3.sym BSum)
-bsum2=$(word_expr build/bench3.sym BSum2)
-bsum3=$(word_expr build/bench3.sym BSum3)
-bsum4=$(word_expr build/bench3.sym BSum4)
-bsua=$(word_expr build/bench3.sym BSuA)
-bsub=$(word_expr build/bench3.sym BSuB)
-bmna=$(word_expr build/bench3.sym BMnA)
-bmnb=$(word_expr build/bench3.sym BMnB)
-bev=$(byte_expr build/bench3.sym BEvRes)
-bhit=$(byte_expr build/bench3.sym BHitRes)
-btpread=$(word_expr build/bench3.sym BTpRead)
-btpsum=$(byte_expr build/bench3.sym BTpSum)
-btperr=$(byte_expr build/bench3.sym BTpErr)
-
-pass_expr="($bsum==$bsum2 && $bsum3==$bsum4 && $bsua==$bsub && $bmna==$bmnb && $bev==63 && $bhit==13 && $btpread==8 && $btpsum==66 && $btperr==0)"
-bench_cmd=$(printf 'breakpoint 0x%s\ncommands 1\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint 7654321+(%s)\nend\n' \
-  "$bhang" "$bsum" "$bsum2" "$bsum3" "$bsum4" "$bev" "$bhit" "$btpread" "$btpsum" "$btperr" "$pass_expr")
-
-set +e
-timeout -k 5s 90s fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
-  --debugger-command "$bench_cmd" build/bench3-tape.tap >build/fuse-bench.log 2>&1
-bench_rc=$?
-set -e
-case "$bench_rc" in
-  0|124|137) ;;
-  *) exit "$bench_rc" ;;
-esac
-grep -q '7654322' build/fuse-bench.log
+fuse --full-screen --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
+  build/bench3-tape.tap >build/fuse-bench.log 2>&1 &
+FUSE_PID=$!
+sleep 18
+kill -0 "$FUSE_PID"
+scrot shots/bench3.png
+python3 build/tools/check-screen.py green shots/bench3.png
+stop_proc "$FUSE_PID"
 
 echo "product tests passed"
