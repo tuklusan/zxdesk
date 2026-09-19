@@ -47,6 +47,7 @@ jobs:
       - name: Commit captures
         run: |
           set -eu
+          git config --global --add safe.directory /__w/zxdesk/zxdesk
           git rev-parse --is-inside-work-tree
           mkdir -p images/gui_acceptance_test
           rm -f images/gui_acceptance_test/*.png
