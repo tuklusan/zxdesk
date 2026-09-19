@@ -21,6 +21,9 @@ class Gui:
     def v(self, name):
         return self.m.peek(self.m.sym(name))
 
+    def w(self, name):
+        return self.m.peek16(self.m.sym(name))
+
     def post(self, kind, b=0, c=0):
         self.m.m.a = kind
         self.m.m.b = b
@@ -77,19 +80,19 @@ def test_boot():
 
 def test_window_drag_and_resize():
     g = Gui()
-    g.drag([(100, 52), (100, 58), (100, 64), (100, 70), (108, 76)])
-    check("drag x", g.v("WinX"), 9)
-    check("drag y", g.v("WinY"), 72)
+    g.drag([(120, 52), (126, 60), (132, 68), (140, 76),
+            (148, 84), (156, 96)])
+    check("drag x", g.v("WinX"), 12)
+    check("drag y", g.v("WinY"), 92)
 
-    g.drag([(100, 76), (124, 84), (148, 92)])
-    before_w, before_h = g.v("WinW"), g.v("WinH")
-    grip_x = (g.v("WinX") + g.v("WinW") - 1) * 8 + 4
-    grip_y = g.v("WinY") + g.v("WinH") - 4
-    g.drag([(grip_x, grip_y), (grip_x - 16, grip_y - 12),
-            (grip_x - 32, grip_y - 24)])
-    if not (g.v("WinW") < before_w and g.v("WinH") < before_h):
-        raise AssertionError("resize did not shrink both dimensions")
-    print("ok  resize shrinks both dimensions")
+    g.drag([(236, 160), (228, 154), (216, 146), (204, 138), (196, 132)])
+    check("resize width", g.v("WinW"), 13)
+    check("resize height", g.v("WinH"), 41)
+    small = (g.v("WinW"), g.v("WinH"))
+    g.drag([(196, 132), (208, 140), (220, 148), (232, 156), (236, 160)])
+    if not (g.v("WinW") > small[0] and g.v("WinH") > small[1]):
+        raise AssertionError("resize did not grow both dimensions")
+    print("ok  resize grows both dimensions")
     g.shot("drag-resize")
 
 
@@ -100,8 +103,10 @@ def test_menu_and_settings():
     g.click(200, 150)
     check("outside click dismisses menu", g.v("MenuOpen"), 0)
 
-    g.key(g.m.sym("SC_SETTINGS"))
-    check("settings opens", g.v("DlgUp"), 1)
+    g.click(20, 4)
+    check("desk menu opens", g.v("MenuOpen"), 1)
+    g.click(20, 20)
+    check("settings opens from menu", g.v("DlgUp"), 1)
     check("settings focus starts first", g.v("PnlFocus"), 0)
 
     old = g.v("SetInvertY")
@@ -111,6 +116,27 @@ def test_menu_and_settings():
     g.key(g.m.sym("KEY_ENTER"))
     check("settings value cycles back", g.v("SetInvertY"), old)
     g.shot("settings")
+
+
+def test_menu_actions():
+    g = Gui()
+    start = g.v("WndCount")
+
+    g.click(145, 4)
+    g.click(145, 12)
+    check("view clock menu action", g.v("WndCount"), start + 1)
+    check("clock is front", g.w("WinApp"), g.m.sym("AppClock"))
+
+    g.click(196, 4)
+    g.click(196, 12)
+    check("help keys menu action", g.v("WndCount"), start + 2)
+    check("keys is front", g.w("WinApp"), g.m.sym("AppKeys"))
+
+    g.click(90, 4)
+    g.click(90, 20)
+    check("file open menu action", g.v("WndCount"), start + 3)
+    check("commander is front", g.w("WinApp"), g.m.sym("AppCmd"))
+    g.shot("menu-actions")
 
 
 def test_notepad_keys_and_close_guard():
@@ -160,9 +186,21 @@ def test_desktop_shortcuts_and_arrange():
 def test_shortcut_windows_and_close():
     g = Gui()
     start = g.v("WndCount")
-    for sym, delta in (("SC_CLOCK", 1), ("SC_CALENDAR", 2), ("SC_FILES", 3)):
-        g.key(g.m.sym(sym))
-        check(sym.lower(), g.v("WndCount"), start + delta)
+    g.key(g.m.sym("SC_CLOCK"))
+    check("clock shortcut", g.v("WndCount"), start + 1)
+    check("clock shortcut focuses clock", g.w("WinApp"), g.m.sym("AppClock"))
+
+    g.key(g.m.sym("SC_NEXT"))
+    check("next window changes focus", g.w("WinApp"), g.m.sym("AppNote"))
+
+    g.key(g.m.sym("SC_CALENDAR"))
+    check("calendar shortcut", g.v("WndCount"), start + 2)
+    check("calendar shortcut focuses calendar", g.w("WinApp"), g.m.sym("AppCal"))
+
+    g.key(g.m.sym("SC_FILES"))
+    check("files shortcut", g.v("WndCount"), start + 3)
+    check("files shortcut focuses commander", g.w("WinApp"), g.m.sym("AppCmd"))
+
     g.key(g.m.sym("SC_CLOSE"))
     check("close removes front window", g.v("WndCount"), start + 2)
     g.shot("shortcut-close")
@@ -173,6 +211,7 @@ def main():
         test_boot,
         test_window_drag_and_resize,
         test_menu_and_settings,
+        test_menu_actions,
         test_notepad_keys_and_close_guard,
         test_desktop_shortcuts_and_arrange,
         test_shortcut_windows_and_close,
