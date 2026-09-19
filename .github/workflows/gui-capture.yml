@@ -1,8 +1,9 @@
 name: GUI acceptance capture
 
 on:
-  issues:
-    types: [opened]
+  push:
+    paths:
+      - '.run/gui-capture'
 
 permissions:
   contents: write
@@ -13,7 +14,6 @@ concurrency:
 
 jobs:
   capture:
-    if: github.event.issue.title == 'GUI acceptance capture request 2026-09-19'
     runs-on: ubuntu-24.04
     container:
       image: ubuntu@sha256:2e863c44b718727c860746568e1d54afd13b2fa71b160f5cd9058fc436217b30
@@ -58,13 +58,12 @@ jobs:
           cp shots/gui-*.png images/gui_acceptance_test/
           test "$(find images/gui_acceptance_test -maxdepth 1 -name 'gui-*.png' -type f | wc -l)" -eq 11
           git lfs install --local
-          git add .gitattributes images/gui_acceptance_test
+          git add images/gui_acceptance_test
           git rm .github/workflows/gui-capture.yml
           names="$(git diff --cached --name-only)"
-          printf '%s\n' "$names" | grep -qx '.gitattributes'
           printf '%s\n' "$names" | grep -qx '.github/workflows/gui-capture.yml'
           test "$(printf '%s\n' "$names" | grep -c '^images/gui_acceptance_test/gui-.*\.png$')" -eq 11
-          test "$(printf '%s\n' "$names" | wc -l)" -eq 13
+          test "$(printf '%s\n' "$names" | wc -l)" -eq 12
           for f in images/gui_acceptance_test/*.png; do
             git show ":$f" | grep -qx 'version https://git-lfs.github.com/spec/v1'
             git show ":$f" | grep -Eq '^oid sha256:[0-9a-f]{64}$'
