@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
       - name: Record runner
         run: |
@@ -34,14 +34,16 @@ jobs:
           test -s assets/48.rom
           printf '%s  %s\n' d55daa439b673b0e3f5897f99ac37ecb45f974d1862b4dadb85dec34af99cb42 assets/48.rom | sha256sum -c -
 
-      - name: Install tools
+      - name: Install pinned tools
         run: |
           set -eu
+          source build/tools/toolchain.env
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential ca-certificates wget fuse-emulator-gtk xvfb scrot
-          wget -q https://pasmo.speccy.org/bin/pasmo-0.5.5.tar.gz
-          tar xzf pasmo-0.5.5.tar.gz
-          cd pasmo-0.5.5
+          sudo apt-get install -y --no-install-recommends build-essential ca-certificates wget             "fuse-emulator-common=$FUSE_PACKAGE_VERSION"             "fuse-emulator-gtk=$FUSE_PACKAGE_VERSION"             "xvfb=$XVFB_PACKAGE_VERSION"             "scrot=$SCROT_PACKAGE_VERSION"
+          wget -q -O "pasmo-$PASMO_VERSION.tar.gz" "$PASMO_URL"
+          printf '%s  %s\n' "$PASMO_SHA256" "pasmo-$PASMO_VERSION.tar.gz" | sha256sum -c -
+          tar xzf "pasmo-$PASMO_VERSION.tar.gz"
+          cd "pasmo-$PASMO_VERSION"
           ./configure
           make -j1
           sudo make install
@@ -78,7 +80,7 @@ jobs:
 
       - name: Save outputs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: zxdesk-run
           path: |
