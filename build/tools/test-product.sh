@@ -46,8 +46,17 @@ sleep 2
 
 evpoll=$(sym build/zxdesk.sym EvPoll)
 test -n "$evpoll"
-smoke_cmd=$(printf 'breakpoint 0x%s\ncommands 1\nexit 0\nend\n' "$evpoll")
-timeout 60s fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound   --debugger-command "$smoke_cmd" build/zxdesk.tap >build/fuse-smoke.log 2>&1
+smoke_cmd=$(printf 'breakpoint 0x%s\ncommands 1\nprint 424243\nend\n' "$evpoll")
+set +e
+timeout -k 5s 60s fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
+  --debugger-command "$smoke_cmd" build/zxdesk.tap >build/fuse-smoke.log 2>&1
+smoke_rc=$?
+set -e
+case "$smoke_rc" in
+  0|124|137) ;;
+  *) exit "$smoke_rc" ;;
+esac
+grep -q '424243' build/fuse-smoke.log
 
 fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound   build/zxdesk.tap >build/fuse-visual.log 2>&1 &
 FUSE_PID=$!
@@ -95,8 +104,18 @@ btpsum=$(byte_expr build/bench3.sym BTpSum)
 btperr=$(byte_expr build/bench3.sym BTpErr)
 
 pass_expr="($bsum==$bsum2 && $bsum3==$bsum4 && $bsua==$bsub && $bmna==$bmnb && $bev==63 && $bhit==13 && $btpread==8 && $btpsum==66 && $btperr==0)"
-bench_cmd=$(printf 'breakpoint 0x%s\ncommands 1\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nexit ((%s)==0)\nend\n'   "$bhang" "$bsum" "$bsum2" "$bsum3" "$bsum4" "$bev" "$bhit" "$btpread" "$btpsum" "$btperr" "$pass_expr")
+bench_cmd=$(printf 'breakpoint 0x%s\ncommands 1\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint %s\nprint 7654321+(%s)\nend\n' \
+  "$bhang" "$bsum" "$bsum2" "$bsum3" "$bsum4" "$bev" "$bhit" "$btpread" "$btpsum" "$btperr" "$pass_expr")
 
-timeout 90s fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound   --debugger-command "$bench_cmd" build/bench3-tape.tap >build/fuse-bench.log 2>&1
+set +e
+timeout -k 5s 90s fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound \
+  --debugger-command "$bench_cmd" build/bench3-tape.tap >build/fuse-bench.log 2>&1
+bench_rc=$?
+set -e
+case "$bench_rc" in
+  0|124|137) ;;
+  *) exit "$bench_rc" ;;
+esac
+grep -q '7654322' build/fuse-bench.log
 
 echo "product tests passed"
