@@ -211,6 +211,88 @@ def test_shortcut_windows_and_close():
     g.shot("shortcut-close")
 
 
+
+def test_clock_and_calendar_keys():
+    g = Gui()
+    g.key(g.m.sym("SC_CLOCK"))
+    check("clock starts on hours", g.v("ClkField"), 0)
+    hour = g.v("ClkH")
+    g.key(g.m.sym("KEY_UP"))
+    check("clock hour key", g.v("ClkH"), (hour + 1) % 24)
+    g.key(g.m.sym("KEY_RIGHT"))
+    check("clock selects minutes", g.v("ClkField"), 1)
+    minute = g.v("ClkM")
+    g.key(g.m.sym("KEY_DOWN"))
+    check("clock minute key", g.v("ClkM"), (minute - 1) % 60)
+
+    g.key(g.m.sym("SC_CALENDAR"))
+    day = g.v("CalSel")
+    g.key(g.m.sym("KEY_RIGHT"))
+    check("calendar moves one day", g.v("CalSel"), day + 1)
+    g.key(g.m.sym("KEY_DOWN"))
+    check("calendar moves one week", g.v("CalSel"), day + 8)
+    g.key(g.m.sym("KEY_ENTER"))
+    check("calendar sets today day", g.v("TodayD"), g.v("CalSel"))
+    check("calendar sets today month", g.v("TodayM"), g.v("CalMonth"))
+    check("calendar sets today year", g.v("TodayY"), g.v("CalYear"))
+    g.shot("clock-calendar-keys")
+
+
+def test_commander_and_desktop_setup():
+    g = Gui()
+    g.key(g.m.sym("SC_FILES"))
+    check("commander starts left", g.v("CmdActive"), 0)
+    g.key(g.m.sym("KEY_RIGHT"))
+    check("commander selects right pane", g.v("CmdActive"), 1)
+    g.key(g.m.sym("KEY_LEFT"))
+    check("commander returns left pane", g.v("CmdActive"), 0)
+
+    g.key(g.m.sym("SC_DESKTOP"))
+    check("desktop setup has eight rows", g.v("PnlRows"), 8)
+    check("desktop setup focus starts first", g.v("PnlFocus"), 0)
+    present = g.m.peek(g.m.sym("DskTab"))
+    g.key(g.m.sym("KEY_ENTER"))
+    check("desktop setup toggles note", g.m.peek(g.m.sym("DskTab")), present ^ 1)
+    g.key(g.m.sym("KEY_ENTER"))
+    check("desktop setup toggles note back", g.m.peek(g.m.sym("DskTab")), present)
+    g.shot("commander-desktop")
+
+
+def test_save_as_panel():
+    g = Gui()
+    g.key(ord("A"))
+    g.key(g.m.sym("SC_SAVEAS"))
+    check("save as panel opens", g.v("FmUp"), 1)
+    check("save as has three rows", g.v("PnlRows"), 3)
+    check("save as starts in name", g.v("PnlFocus"), 1)
+    field = bytes(g.m.peek(g.m.sym("FmField") + i) for i in range(4))
+    check("save as seeds note name", field, b"NOTE")
+    g.key(g.m.sym("KEY_DOWN"))
+    g.key(g.m.sym("KEY_ENTER"))
+    check("save as closes after save", g.v("FmUp"), 0)
+    check("save as reports success", g.v("NoteResult"), 0)
+    g.shot("save-as")
+
+
+def test_multiple_notes_and_about():
+    g = Gui()
+    start = g.v("WndCount")
+    g.key(g.m.sym("SC_NEW"))
+    check("new shortcut opens note", g.v("WndCount"), start + 1)
+    check("new shortcut focuses note", g.w("WinApp"), g.m.sym("AppNote"))
+    g.key(ord("Z"))
+    check("new note receives text", g.m.peek(g.m.sym("NoteBuf")), ord("Z"))
+    g.key(g.m.sym("SC_NEXT"))
+    check("next returns to other note", g.w("WinApp"), g.m.sym("AppNote"))
+    check("other note keeps separate text", g.m.peek(g.m.sym("NoteBuf")), ord(" "))
+    g.key(g.m.sym("SC_ABOUT"))
+    check("about shortcut opens window", g.v("WndCount"), start + 2)
+    check("about is front", g.w("WinApp"), g.m.sym("AppAbout"))
+    count = g.v("WndCount")
+    g.key(g.m.sym("SC_ABOUT"))
+    check("second about focuses existing window", g.v("WndCount"), count)
+    g.shot("multi-note-about")
+
 def main():
     tests = [
         test_boot,
@@ -220,6 +302,10 @@ def main():
         test_notepad_keys_and_close_guard,
         test_desktop_shortcuts_and_arrange,
         test_shortcut_windows_and_close,
+        test_clock_and_calendar_keys,
+        test_commander_and_desktop_setup,
+        test_save_as_panel,
+        test_multiple_notes_and_about,
     ]
     for test in tests:
         print(f"-- {test.__name__}")
