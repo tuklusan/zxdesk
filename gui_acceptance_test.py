@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise documented desktop behaviour through the event dispatcher."""
+import hashlib
 from pathlib import Path
 
 from zxtest import boot, render
@@ -15,7 +16,16 @@ BUTTON_DOWN = 0xFD
 
 class Gui:
     def __init__(self):
+        rom = Path("assets/48.rom")
+        if not rom.is_file():
+            raise RuntimeError("required 48K ROM is missing")
+        got = hashlib.sha256(rom.read_bytes()).hexdigest()
+        want = "d55daa439b673b0e3f5897f99ac37ecb45f974d1862b4dadb85dec34af99cb42"
+        if got != want:
+            raise RuntimeError(f"48K ROM hash mismatch: {got}")
         self.m = boot("")
+        if not self.m.has_rom:
+            raise RuntimeError("48K ROM did not load")
         SHOTS.mkdir(exist_ok=True)
 
     def v(self, name):
