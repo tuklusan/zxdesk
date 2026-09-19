@@ -30,8 +30,9 @@ build_one() {
 build_one zxdesk
 build_one zxtest --equ TEST=1 --equ HARNESS=1
 
-python3 -m py_compile taplant.py tstates.py zxtest.py
+python3 -m py_compile taplant.py tstates.py zxtest.py gui_acceptance_test.py
 PYTHONPATH="$ROOT/build/tools/python" python3 zxtest.py | tee build/zxtest.log
+PYTHONPATH="$ROOT/build/tools/python" python3 gui_acceptance_test.py | tee build/gui-acceptance.log
 PYTHONPATH="$ROOT/build/tools/python" python3 zxtest.py --shot | tee build/zxshot.log
 test -s shots/headless-notepad.png
 
