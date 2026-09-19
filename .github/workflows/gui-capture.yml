@@ -6,7 +6,7 @@ on:
       - '.run/gui-capture'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: zxdesk-gui-capture
@@ -26,7 +26,7 @@ jobs:
           apt-get -o Acquire::https::Verify-Peer=false update
           apt-get -o Acquire::https::Verify-Peer=false install -y --no-install-recommends ca-certificates
           apt-get update
-          apt-get install -y --no-install-recommends git git-lfs
+          apt-get install -y --no-install-recommends git
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -44,32 +44,16 @@ jobs:
       - name: Run acceptance
         run: bash build/tools/test-product.sh
 
-      - name: Commit captures
+      - name: Collect captures
         run: |
           set -eu
-          git config --global --add safe.directory /__w/zxdesk/zxdesk
-          git rev-parse --is-inside-work-tree
           mkdir -p images/gui_acceptance_test
-          rm -f images/gui_acceptance_test/*.png
           cp shots/gui-*.png images/gui_acceptance_test/
           test "$(find images/gui_acceptance_test -maxdepth 1 -name 'gui-*.png' -type f | wc -l)" -eq 11
-          git config --local filter.lfs.clean 'git-lfs clean -- %f'
-          git config --local filter.lfs.smudge 'git-lfs smudge -- %f'
-          git config --local filter.lfs.process 'git-lfs filter-process'
-          git config --local filter.lfs.required true
-          git add images/gui_acceptance_test
-          git rm .github/workflows/gui-capture.yml
-          names="$(git diff --cached --name-only)"
-          printf '%s\n' "$names" | grep -qx '.github/workflows/gui-capture.yml'
-          test "$(printf '%s\n' "$names" | grep -c '^images/gui_acceptance_test/gui-.*\.png$')" -eq 11
-          test "$(printf '%s\n' "$names" | wc -l)" -eq 12
-          for f in images/gui_acceptance_test/*.png; do
-            git show ":$f" | grep -qx 'version https://git-lfs.github.com/spec/v1'
-            git show ":$f" | grep -Eq '^oid sha256:[0-9a-f]{64}$'
-            git show ":$f" | grep -Eq '^size [0-9]+$'
-          done
-          git config user.name tuklusan
-          git config user.email tuklusan@users.noreply.github.com
-          git commit -m 'Store GUI acceptance captures'
-          git lfs push origin HEAD
-          git push origin HEAD:main
+
+      - name: Save captures
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gui-acceptance-captures
+          path: images/gui_acceptance_test/*.png
+          if-no-files-found: error
