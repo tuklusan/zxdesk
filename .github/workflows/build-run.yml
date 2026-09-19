@@ -61,7 +61,7 @@ jobs:
           XVFB_PID=$!
           export DISPLAY=:99
           sleep 2
-          fuse --machine 48 --auto-load --accelerate-loader --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
+          fuse --machine 48 --rom-48 /usr/share/spectrum-roms/opense.rom --auto-load --accelerate-loader --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
           FUSE_PID=$!
           trap 'kill "$FUSE_PID" "$XVFB_PID" 2>/dev/null || true' EXIT
           sleep 12
