@@ -2,13 +2,15 @@
   "expected_runner_host": "ubuntu-24.04",
   "execution_image": "ubuntu@sha256:2e863c44b718727c860746568e1d54afd13b2fa71b160f5cd9058fc436217b30",
   "package_snapshot": "20260630T120000Z",
-  "last_runner_name": "GitHub Actions 1000040503",
+  "last_runner_name": "GitHub Actions 1000040740",
   "last_runner_os": "Linux",
   "last_runner_arch": "X64",
-  "last_run_id": 35454768849,
-  "last_head_sha": "6f7525843749b88b58d83d640bda559a8a69e249",
+  "last_run_id": 35459717865,
+  "last_head_sha": "5aab1fb54692a009b75add8853e4a6cd9bb792f2",
+  "last_conclusion": "success",
+  "last_artifact_digest": "sha256:2524311b55cdcc99b525b7384ad09e574c5217bc68ecfeb33666823982c7a063",
   "persistence": "repository-and-artifact-state-only",
   "disk_image_persistent": false,
   "runner_autolaunch": false,
-  "launch_trigger": "scratch/run-request.txt"
+  "launch_trigger": "workflow_dispatch"
 }

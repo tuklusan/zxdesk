@@ -19,4 +19,4 @@ Pinned inputs:
 
 `install-pinned.sh` installs the build and run environment. `verify-sources.sh` verifies every separately referenced archive and principal package.
 
-The workflow has no timer, generic push, or review trigger. A runner is requested only by changing `scratch/run-request.txt`.
+The workflow has no timer, push, or review trigger. It can only be started explicitly through the manual workflow dispatch control.
