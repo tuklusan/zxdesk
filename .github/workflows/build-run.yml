@@ -37,7 +37,7 @@ jobs:
           ./configure
           make -j1
           sudo make install
-          pasmo --version
+          command -v pasmo
           fuse --version
 
       - name: Build
