@@ -3328,4 +3328,5 @@ def pointer_key_checks(m):
     return failures
 
 
-sys.exit(main())
+if __name__ == "__main__":
+    raise SystemExit(main())
