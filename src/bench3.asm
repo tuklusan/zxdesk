@@ -140,9 +140,59 @@ BRunLoop:
                 pop     bc
                 djnz    BRunLoop
                 call    BReport
+                call    BValidate
                 di
 BHang:
                 jr      BHang
+
+; Automated real-emulator result signal. Green border means every
+; correctness subject that BenchMain can verify passed, including the
+; planted tape round trip. Red means at least one failed.
+BValidate:
+                ld      hl,(BSum)
+                ld      de,(BSum2)
+                or      a
+                sbc     hl,de
+                jr      nz,BValFail
+                ld      hl,(BSum3)
+                ld      de,(BSum4)
+                or      a
+                sbc     hl,de
+                jr      nz,BValFail
+                ld      hl,(BSuA)
+                ld      de,(BSuB)
+                or      a
+                sbc     hl,de
+                jr      nz,BValFail
+                ld      hl,(BMnA)
+                ld      de,(BMnB)
+                or      a
+                sbc     hl,de
+                jr      nz,BValFail
+                ld      a,(BEvRes)
+                cp      63
+                jr      nz,BValFail
+                ld      a,(BHitRes)
+                cp      BHITN
+                jr      nz,BValFail
+                ld      hl,(BTpRead)
+                ld      de,8
+                or      a
+                sbc     hl,de
+                jr      nz,BValFail
+                ld      a,(BTpSum)
+                cp      66
+                jr      nz,BValFail
+                ld      a,(BTpErr)
+                or      a
+                jr      nz,BValFail
+                ld      a,4
+                out     ($FE),a
+                ret
+BValFail:
+                ld      a,2
+                out     ($FE),a
+                ret
 
 BCallHL:
                 jp      (hl)
