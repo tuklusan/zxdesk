@@ -156,7 +156,12 @@ def test_notepad_keys_and_close_guard():
     count = g.v("WndCount")
     g.key(g.m.sym("SC_CLOSE"))
     check("dirty close keeps window pending answer", g.v("WndCount"), count)
-    check("dirty close opens confirm", g.v("DlgUp"), 1)
+    check("dirty close opens save dialogue", g.v("DgDepth"), 1)
+    check("dirty close has three answers", g.v("PnlRows"), 5)
+    check("dirty close defaults to cancel", g.v("PnlFocus"), 2)
+    g.key(g.m.sym("KEY_ENTER"))
+    check("cancel keeps dirty window", g.v("WndCount"), count)
+    check("cancel closes save dialogue", g.v("DgDepth"), 0)
     g.shot("dirty-close")
 
 
