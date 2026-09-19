@@ -1,0 +1,62 @@
+name: Build and run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: zxdesk-main
+  cancel-in-progress: false
+
+jobs:
+  build-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pasmo fuse-emulator-gtk xvfb scrot
+
+      - name: Build
+        run: |
+          set -eu
+          mkdir -p build shots
+          pasmo -I src --name zxdesk.tap --tapbas src/zxdesk.asm build/zxdesk.tap build/zxdesk.sym
+          pasmo -I src --bin src/zxdesk.asm build/zxdesk.bin
+          test -s build/zxdesk.tap
+          test -s build/zxdesk.bin
+
+      - name: Run and capture
+        run: |
+          set -eu
+          Xvfb :99 -screen 0 1024x768x24 >build/xvfb.log 2>&1 &
+          export DISPLAY=:99
+          sleep 2
+          fuse --machine 48 --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
+          FUSE_PID=$!
+          for n in $(seq 1 30); do
+            if pgrep -x fuse >/dev/null; then break; fi
+            sleep 1
+          done
+          sleep 12
+          scrot shots/zxdesk.png
+          test -s shots/zxdesk.png
+          kill "$FUSE_PID" 2>/dev/null || true
+
+      - name: Save outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zxdesk-run
+          path: |
+            build/zxdesk.tap
+            build/zxdesk.bin
+            build/zxdesk.sym
+            build/fuse.log
+            build/xvfb.log
+            shots/zxdesk.png
+          if-no-files-found: warn
