@@ -15,9 +15,18 @@ concurrency:
 
 jobs:
   build-run:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu@sha256:2e863c44b718727c860746568e1d54afd13b2fa71b160f5cd9058fc436217b30
     timeout-minutes: 15
     steps:
+      - name: Bootstrap checkout
+        run: |
+          set -eu
+          printf 'APT::Snapshot "%s";\n' 20260630T120000Z > /etc/apt/apt.conf.d/50zxdesk-snapshot
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
       - name: Record runner
@@ -27,6 +36,9 @@ jobs:
           printf '%s\n' "$RUNNER_OS" > scratch/current-runner-os.txt
           printf '%s\n' "$RUNNER_ARCH" > scratch/current-runner-arch.txt
           printf '%s\n' "$GITHUB_RUN_ID" > scratch/current-run-id.txt
+          printf '%s\n' "${ImageVersion:-unknown}" > scratch/current-host-image-version.txt
+          printf '%s\n' 'ubuntu@sha256:2e863c44b718727c860746568e1d54afd13b2fa71b160f5cd9058fc436217b30' > scratch/current-execution-image.txt
+          printf '%s\n' '20260630T120000Z' > scratch/current-package-snapshot.txt
 
       - name: Verify ROM
         run: |
@@ -35,20 +47,7 @@ jobs:
           printf '%s  %s\n' d55daa439b673b0e3f5897f99ac37ecb45f974d1862b4dadb85dec34af99cb42 assets/48.rom | sha256sum -c -
 
       - name: Install pinned tools
-        run: |
-          set -eu
-          source build/tools/toolchain.env
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential ca-certificates wget             "fuse-emulator-common=$FUSE_PACKAGE_VERSION"             "fuse-emulator-gtk=$FUSE_PACKAGE_VERSION"             "xvfb=$XVFB_PACKAGE_VERSION"             "scrot=$SCROT_PACKAGE_VERSION"
-          wget -q -O "pasmo-$PASMO_VERSION.tar.gz" "$PASMO_URL"
-          printf '%s  %s\n' "$PASMO_SHA256" "pasmo-$PASMO_VERSION.tar.gz" | sha256sum -c -
-          tar xzf "pasmo-$PASMO_VERSION.tar.gz"
-          cd "pasmo-$PASMO_VERSION"
-          ./configure
-          make -j1
-          sudo make install
-          command -v pasmo
-          fuse --version
+        run: bash build/tools/install-pinned.sh
 
       - name: Build
         run: |
@@ -93,5 +92,8 @@ jobs:
             scratch/current-runner-os.txt
             scratch/current-runner-arch.txt
             scratch/current-run-id.txt
+            scratch/current-host-image-version.txt
+            scratch/current-execution-image.txt
+            scratch/current-package-snapshot.txt
             shots/zxdesk.png
           if-no-files-found: warn
