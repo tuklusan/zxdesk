@@ -19,6 +19,9 @@ fetch() {
 
 fetch "$PASMO_URL" "$PASMO_SHA256" "pasmo-$PASMO_VERSION.tar.gz"
 fetch "$FUSE_SOURCE_URL" "$FUSE_SOURCE_SHA256" "fuse-$FUSE_VERSION.tar.gz"
+fetch "$FUSE_PACKAGE_URL" "$FUSE_PACKAGE_SHA256" "fuse-emulator-gtk.deb"
 fetch "$XVFB_SOURCE_URL" "$XVFB_SOURCE_SHA256" "xorg-server-21.1.12.tar.xz"
+fetch "$XVFB_PACKAGE_URL" "$XVFB_PACKAGE_SHA256" "xvfb.deb"
 fetch "$SCROT_SOURCE_URL" "$SCROT_SOURCE_SHA256" "scrot-1.10.tar.gz"
+fetch "$SCROT_PACKAGE_URL" "$SCROT_PACKAGE_SHA256" "scrot.deb"
 fetch "$UPEEP80_URL" "$UPEEP80_SHA256" "upeep80-$UPEEP80_VERSION.tar.gz"
