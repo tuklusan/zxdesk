@@ -20,6 +20,7 @@ here in a fraction of a second with a real assertion at the end.
 import struct
 import sys
 import zlib
+from pathlib import Path
 
 import z80
 
@@ -27,7 +28,8 @@ import z80
 # $8000 would put every routine 8K high and the first CALL would land
 # in the middle of something else.
 ORG = 0x6000
-ROM = "/Applications/Fuse.app/Contents/Resources/48.rom"
+ROOT = Path(__file__).resolve().parent
+ROM = str(ROOT / "assets" / "48.rom")
 SCREEN = 0x4000
 CHARSET = 0x3C00
 SENTINEL = 0x0100          # nothing is mapped here; a HALT is planted to land on
@@ -301,9 +303,14 @@ def main():
     failures += field_checks(m)
 
     m.call("BStoreTest")
-    print(f"BStoreTest   wrote {m.peek16(m.sym('BStWrote'))}, "
-          f"read {m.peek16(m.sym('BStRead'))}, "
-          f"{m.peek(m.sym('BStBad'))} wrong, err {m.peek(m.sym('BStErr'))}")
+    st_wrote = m.peek16(m.sym("BStWrote"))
+    st_read = m.peek16(m.sym("BStRead"))
+    st_bad = m.peek(m.sym("BStBad"))
+    st_err = m.peek(m.sym("BStErr"))
+    print(f"BStoreTest   wrote {st_wrote}, read {st_read}, "
+          f"{st_bad} wrong, err {st_err}")
+    if (st_wrote, st_read, st_bad, st_err) != (64, 64, 0, 5):
+        failures.append("BStoreTest")
 
     # the editor buffer, because a count alone does not say which
     # check failed
