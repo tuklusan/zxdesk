@@ -153,6 +153,9 @@ def test_notepad_keys_and_close_guard():
     got = bytes(g.m.peek(base + i) for i in range(6))
     check("notepad inserts", got, b"HELLXO")
 
+    g.key(g.m.sym("SC_CLOCK"))
+    g.key(g.m.sym("SC_NEXT"))
+    check("dirty note is front before close", g.w("WinApp"), g.m.sym("AppNote"))
     count = g.v("WndCount")
     g.key(g.m.sym("SC_CLOSE"))
     check("dirty close keeps window pending answer", g.v("WndCount"), count)
