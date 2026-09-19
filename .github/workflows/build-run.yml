@@ -1,6 +1,7 @@
-name: Build and run
+name: Product test
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -10,15 +11,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: zxdesk-main
+  group: zxdesk-product-test
   cancel-in-progress: false
 
 jobs:
-  build-run:
+  product-test:
     runs-on: ubuntu-24.04
     container:
       image: ubuntu@sha256:2e863c44b718727c860746568e1d54afd13b2fa71b160f5cd9058fc436217b30
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Bootstrap checkout
         run: |
@@ -49,45 +50,19 @@ jobs:
       - name: Install pinned tools
         run: bash build/tools/install-pinned.sh
 
-      - name: Build
-        run: |
-          set -eu
-          pasmo -I src --name zxdesk.tap --tapbas src/zxdesk.asm build/zxdesk.tap build/zxdesk.sym
-          pasmo -I src --bin src/zxdesk.asm build/zxdesk.bin
-          test -s build/zxdesk.tap
-          test -s build/zxdesk.bin
-          bytes=$(stat -c%s build/zxdesk.bin)
-          end=$((0x6000 + bytes))
-          slowend=$(awk '$1=="SlowEnd"{v=$3; sub(/[Hh]$/,"",v); print v; exit}' build/zxdesk.sym)
-          slowend=$((16#${slowend:-6000}))
-          test "$end" -le $((0xBD00))
-          test "$slowend" -le $((0x8000))
-
-      - name: Run and capture
-        run: |
-          set -eu
-          Xvfb :99 -screen 0 1024x768x24 -ac >build/xvfb.log 2>&1 &
-          XVFB_PID=$!
-          export DISPLAY=:99
-          sleep 2
-          fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
-          FUSE_PID=$!
-          trap 'kill "$FUSE_PID" "$XVFB_PID" 2>/dev/null || true' EXIT
-          sleep 12
-          scrot shots/zxdesk.png
-          test -s shots/zxdesk.png
+      - name: Test product
+        run: bash build/tools/test-product.sh
 
       - name: Save outputs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: zxdesk-run
+          name: zxdesk-product-test
           path: |
-            build/zxdesk.tap
-            build/zxdesk.bin
-            build/zxdesk.sym
-            build/fuse.log
-            build/xvfb.log
+            build/*.tap
+            build/*.bin
+            build/*.sym
+            build/*.log
             scratch/current-runner-name.txt
             scratch/current-runner-os.txt
             scratch/current-runner-arch.txt
@@ -95,5 +70,5 @@ jobs:
             scratch/current-host-image-version.txt
             scratch/current-execution-image.txt
             scratch/current-package-snapshot.txt
-            shots/zxdesk.png
+            shots/*.png
           if-no-files-found: warn
