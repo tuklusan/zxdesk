@@ -3,7 +3,8 @@ name: Build and run
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths:
+      - scratch/run-request.txt
 
 permissions:
   contents: read
@@ -21,10 +22,17 @@ jobs:
 
       - name: Record runner
         run: |
-          mkdir -p build shots
-          printf '%s\n' "$RUNNER_NAME" > build/runner-name.txt
-          printf '%s\n' "$RUNNER_OS" > build/runner-os.txt
-          printf '%s\n' "$RUNNER_ARCH" > build/runner-arch.txt
+          mkdir -p build shots scratch
+          printf '%s\n' "$RUNNER_NAME" > scratch/current-runner-name.txt
+          printf '%s\n' "$RUNNER_OS" > scratch/current-runner-os.txt
+          printf '%s\n' "$RUNNER_ARCH" > scratch/current-runner-arch.txt
+          printf '%s\n' "$GITHUB_RUN_ID" > scratch/current-run-id.txt
+
+      - name: Verify ROM
+        run: |
+          set -eu
+          test -s assets/48.rom
+          printf '%s  %s\n' d55daa439b673b0e3f5897f99ac37ecb45f974d1862b4dadb85dec34af99cb42 assets/48.rom | sha256sum -c -
 
       - name: Install tools
         run: |
@@ -61,7 +69,7 @@ jobs:
           XVFB_PID=$!
           export DISPLAY=:99
           sleep 2
-          fuse --machine 48 --rom-48 /usr/share/spectrum-roms/opense.rom --auto-load --accelerate-loader --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
+          fuse --machine 48 --rom-48 assets/48.rom --auto-load --accelerate-loader --no-sound build/zxdesk.tap >build/fuse.log 2>&1 &
           FUSE_PID=$!
           trap 'kill "$FUSE_PID" "$XVFB_PID" 2>/dev/null || true' EXIT
           sleep 12
@@ -79,8 +87,9 @@ jobs:
             build/zxdesk.sym
             build/fuse.log
             build/xvfb.log
-            build/runner-name.txt
-            build/runner-os.txt
-            build/runner-arch.txt
+            scratch/current-runner-name.txt
+            scratch/current-runner-os.txt
+            scratch/current-runner-arch.txt
+            scratch/current-run-id.txt
             shots/zxdesk.png
           if-no-files-found: warn

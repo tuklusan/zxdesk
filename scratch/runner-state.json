@@ -1,0 +1,10 @@
+{
+  "expected_runner_class": "ubuntu-slim",
+  "last_runner_name": "GitHub Actions 1000040469",
+  "last_runner_os": "Linux",
+  "last_runner_arch": "X64",
+  "last_run_id": 35454376929,
+  "last_head_sha": "ea0b94765f965a699dbda2b28e1c55b2be81b71a",
+  "persistence": "repository-and-artifact-state-only",
+  "disk_image_persistent": false
+}
