@@ -2,15 +2,21 @@
 
 Maintained by tuklusan.
 
-This directory records the exact build and run tool inputs used by the hosted Ubuntu workflow. Large tools are referenced rather than committed. Every referenced archive or package has a SHA-256 pin in `toolchain.env`.
+The hosted runner is only a transport host. Build and run steps execute inside the immutable Ubuntu image identified by `EXECUTION_IMAGE` in `toolchain.env`.
 
-Pinned tools:
+Package dependency resolution is frozen to `UBUNTU_SNAPSHOT`. The principal run packages and Pasmo are downloaded from fixed references and checked against SHA-256 values before installation or use. Dependencies selected by the package manager come from the fixed signed Ubuntu snapshot.
 
-- Pasmo 0.5.5: assembler used for TAP and binary output.
-- Fuse 1.6.0: ZX Spectrum emulator used for run validation.
-- Xvfb 21.1.12 package: virtual X server used by Fuse.
-- scrot 1.10 package: screenshot capture helper.
-- upeep80 0.2.0: Z80 optimizer reference for development use.
-- Workflow checkout and artifact actions are pinned by commit hash.
+Pinned inputs:
 
-Use `verify-sources.sh` to download and verify the source archives. The workflow directly verifies the Pasmo archive before building it and pins the Ubuntu run packages to exact versions.
+- Ubuntu execution image by registry digest.
+- Ubuntu package snapshot timestamp.
+- Pasmo 0.5.5 source archive.
+- Fuse 1.6.0 package and source archive.
+- Xvfb package and source archive.
+- scrot package and source archive.
+- upeep80 0.2.0 source archive.
+- Workflow checkout and artifact actions by commit hash.
+
+`install-pinned.sh` installs the build and run environment. `verify-sources.sh` verifies every separately referenced archive and principal package.
+
+The workflow has no timer, generic push, or review trigger. A runner is requested only by changing `scratch/run-request.txt`.
