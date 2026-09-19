@@ -34,11 +34,8 @@ SCREEN = 0x4000
 CHARSET = 0x3C00
 SENTINEL = 0x0100          # nothing is mapped here; a HALT is planted to land on
 
-# get_state_view() returns the whole machine record, not the memory:
-# forty bytes of CPU state and then the 64K image. Reading it as if it
-# started at address zero silently returns CPU registers as if they
-# were program bytes, which looks exactly like a miscompiled build.
-MEMOFF = 40
+# Use the processor package's public 64K memory view rather than relying
+# on the private byte offset of memory within its serialized CPU state.
 STACK = 0xBD00
 
 
@@ -59,7 +56,7 @@ class Machine:
     def __init__(self, binpath, sympath, banked=False):
         self.m = z80.Z80Machine()
         self.syms = load_symbols(sympath)
-        self.mem = self.m.get_state_view()
+        self.mem = self.m.memory
         # F3. A 128K pages one of eight 16K banks in at $C000, chosen by
         # the low three bits of a write to $7FFD. The emulator has flat
         # memory, so the banks live here and a write swaps the window's
@@ -91,7 +88,7 @@ class Machine:
         want = value & 7
         if want == self.cur_bank:
             return
-        off = MEMOFF + 0xC000
+        off = 0xC000
         self.banks[self.cur_bank][:] = self.mem[off:off + 0x4000]
         self.m.set_memory_block(0xC000, bytes(self.banks[want]))
         self.cur_bank = want
@@ -135,7 +132,7 @@ class Machine:
         return self.call(name)
 
     def peek(self, addr):
-        return self.mem[MEMOFF + addr]
+        return self.mem[addr]
 
     def peek16(self, addr):
         return self.peek(addr) | (self.peek(addr + 1) << 8)
