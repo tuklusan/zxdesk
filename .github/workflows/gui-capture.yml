@@ -47,11 +47,15 @@ jobs:
       - name: Commit captures
         run: |
           set -eu
+          git rev-parse --is-inside-work-tree
           mkdir -p images/gui_acceptance_test
           rm -f images/gui_acceptance_test/*.png
           cp shots/gui-*.png images/gui_acceptance_test/
           test "$(find images/gui_acceptance_test -maxdepth 1 -name 'gui-*.png' -type f | wc -l)" -eq 11
-          git lfs install --local
+          git config --local filter.lfs.clean 'git-lfs clean -- %f'
+          git config --local filter.lfs.smudge 'git-lfs smudge -- %f'
+          git config --local filter.lfs.process 'git-lfs filter-process'
+          git config --local filter.lfs.required true
           git add images/gui_acceptance_test
           git rm .github/workflows/gui-capture.yml
           names="$(git diff --cached --name-only)"
@@ -66,4 +70,5 @@ jobs:
           git config user.name tuklusan
           git config user.email tuklusan@users.noreply.github.com
           git commit -m 'Store GUI acceptance captures'
+          git lfs push origin HEAD
           git push origin HEAD:main
